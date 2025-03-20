@@ -13,6 +13,80 @@
                         @csrf
 
                         <div class="mb-3">
+                            <label for="order_type" class="form-label">Loại Đơn Hàng <span class="text-danger">*</span></label>
+                            <select class="form-select" id="order_type" name="order_type" required onchange="toggleFields()">
+                                <option value="dine_in">Tại Quán</option>
+                                <option value="online">Đặt Online</option>
+                            </select>
+                        </div>
+
+                        <div id="dine_in_form">
+                            <div class="mb-3">
+                                <label for="customer_name_dine" class="form-label">Tên Khách Hàng <span class="text-danger">*</span></label>
+                                <input type="text"
+                                       class="form-control @error('customer_name') is-invalid @enderror"
+                                       id="customer_name_dine"
+                                       name="customer_name"
+                                       value="{{ old('customer_name') }}"
+                                       required>
+                                @error('customer_name')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="table_number" class="form-label">Số Bàn <span class="text-danger">*</span></label>
+                                <input type="number"
+                                       class="form-control @error('table_number') is-invalid @enderror"
+                                       id="table_number"
+                                       name="table_number"
+                                       value="{{ old('table_number') }}"
+                                       min="1"
+                                       required>
+                                @error('table_number')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+
+                        <div id="online_form" style="display: none;">
+                            <div class="mb-3">
+                                <label for="customer_name_online" class="form-label">Tên Người Đặt Hàng <span class="text-danger">*</span></label>
+                                <input type="text"
+                                       class="form-control @error('customer_name') is-invalid @enderror"
+                                       id="customer_name_online"
+                                       name="customer_name"
+                                       value="{{ old('customer_name') }}">
+                                @error('customer_name')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="customer_phone" class="form-label">Số Điện Thoại <span class="text-danger">*</span></label>
+                                <input type="tel"
+                                       class="form-control @error('customer_phone') is-invalid @enderror"
+                                       id="customer_phone"
+                                       name="customer_phone"
+                                       value="{{ old('customer_phone') }}">
+                                @error('customer_phone')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="delivery_address" class="form-label">Địa Chỉ Giao Hàng <span class="text-danger">*</span></label>
+                                <textarea class="form-control @error('delivery_address') is-invalid @enderror"
+                                          id="delivery_address"
+                                          name="delivery_address"
+                                          rows="2">{{ old('delivery_address') }}</textarea>
+                                @error('delivery_address')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
                             <label for="name" class="form-label">Tên Món Ăn <span class="text-danger">*</span></label>
                             <input type="text"
                                    class="form-control @error('name') is-invalid @enderror"
@@ -102,6 +176,32 @@
 
 @push('scripts')
 <script>
+function toggleFields() {
+    const orderType = document.getElementById('order_type').value;
+    const dineInForm = document.getElementById('dine_in_form');
+    const onlineForm = document.getElementById('online_form');
+    const dineInInputs = dineInForm.querySelectorAll('input, textarea');
+    const onlineInputs = onlineForm.querySelectorAll('input, textarea');
+
+    if (orderType === 'dine_in') {
+        dineInForm.style.display = 'block';
+        onlineForm.style.display = 'none';
+        dineInInputs.forEach(input => input.setAttribute('required', 'required'));
+        onlineInputs.forEach(input => {
+            input.removeAttribute('required');
+            input.value = '';
+        });
+    } else {
+        dineInForm.style.display = 'none';
+        onlineForm.style.display = 'block';
+        onlineInputs.forEach(input => input.setAttribute('required', 'required'));
+        dineInInputs.forEach(input => {
+            input.removeAttribute('required');
+            input.value = '';
+        });
+    }
+}
+
 function previewImage(input) {
     const preview = document.getElementById('imagePreview');
     preview.innerHTML = '';
@@ -121,6 +221,11 @@ function previewImage(input) {
         reader.readAsDataURL(input.files[0]);
     }
 }
+
+// Initialize form fields on page load
+document.addEventListener('DOMContentLoaded', function() {
+    toggleFields();
+});
 </script>
 @endpush
 @endsection

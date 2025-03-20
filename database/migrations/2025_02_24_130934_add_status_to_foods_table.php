@@ -15,7 +15,6 @@ return new class extends Migration
         $table->boolean('status')->default(1)->after('category_id');
     });
 }
-
 public function down()
 {
     Schema::table('foods', function (Blueprint $table) {

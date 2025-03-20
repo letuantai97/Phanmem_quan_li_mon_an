@@ -63,7 +63,9 @@
                             <th>Mã ĐH</th>
                             <th>Khách Hàng</th>
                             <th>Tổng Tiền</th>
+                            <th>Loại ĐH</th>
                             <th>Trạng Thái</th>
+                            <th>Thanh Toán</th>
                             <th>Thời Gian</th>
                             <th>Thao Tác</th>
                         </tr>
@@ -74,6 +76,12 @@
                             <td>#{{ $order->id }}</td>
                             <td>{{ $order->customer_name }}</td>
                             <td>{{ number_format($order->total_amount) }}đ</td>
+                            <td>
+                                <span class="status-badge {{ $order->order_type === 'dine-in' ? 'success' : 'info' }} d-inline-flex align-items-center">
+                                    <i class="fas {{ $order->order_type === 'dine-in' ? 'fa-utensils' : 'fa-shopping-cart' }} me-2"></i>
+                                    {{ $order->order_type === 'dine-in' ? 'Tại chỗ' : 'Online' }}
+                                </span>
+                            </td>
                             <td>
                                 <div class="dropdown">
                                     <button class="btn btn-sm dropdown-toggle {{ match($order->status) {
@@ -121,6 +129,31 @@
                                         </li>
                                     </ul>
                                 </div>
+                            </td>
+                            <td>
+                                @if($order->status === 'hoàn thành')
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm dropdown-toggle {{ $order->payment_status === 'completed' ? 'btn-success' : 'btn-warning' }}" 
+                                                type="button" data-bs-toggle="dropdown">
+                                            {{ $order->payment_status === 'completed' ? 'Đã thanh toán' : 'Chưa thanh toán' }}
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            <li>
+                                                <form action="{{ route('orders.update-payment-status', $order) }}" method="POST">
+                                                    @csrf
+                                                    @method('PATCH')
+                                                    <input type="hidden" name="payment_status" 
+                                                           value="{{ $order->payment_status === 'completed' ? 'pending' : 'completed' }}">
+                                                    <button type="submit" class="dropdown-item">
+                                                        {{ $order->payment_status === 'completed' ? 'Đánh dấu chưa thanh toán' : 'Xác nhận đã thanh toán' }}
+                                                    </button>
+                                                </form>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                @else
+                                    {!! $order->payment_status_badge !!}
+                                @endif
                             </td>
                             <td>{{ $order->created_at->format('d/m/Y H:i') }}</td>
                             <td>

@@ -71,8 +71,10 @@
                         <tr>
                             <th>Mã ĐH</th>
                             <th>Khách hàng</th>
+                            <th>Loại ĐH</th>
                             <th>Tổng tiền</th>
-                            <th>Trạng thái</th>
+                            <th>Trạng thái đơn hàng</th>
+                            <th>Thanh toán</th>
                             <th>Thời gian</th>
                             <th>Thao tác</th>
                         </tr>
@@ -82,6 +84,11 @@
                         <tr class="animate__animated animate__fadeIn" style="animation-delay: {{ 0.1 * $loop->iteration }}s">
                             <td><span class="order-id">#{{ $order->id ?? '' }}</span></td>
                             <td>{{ $order->customer_name ?? 'N/A' }}</td>
+                            <td>
+                                <span class="status-badge {{ $order->order_type === 'dine-in' ? 'success' : 'info' }}">
+                                    {{ $order->order_type === 'dine-in' ? 'Tại chỗ' : 'Online' }}
+                                </span>
+                            </td>
                             <td><span class="price-tag">{{ number_format($order->total_amount ?? 0) }}đ</span></td>
                             <td>
                                 <span class="status-badge {{ match($order->status ?? '') {
@@ -90,8 +97,21 @@
                                     'hoàn thành' => 'success',
                                     'đã hủy' => 'danger',
                                     default => 'secondary'
-                                } }}">
-                                    {{ $order->status ?? 'Không xác định' }}
+                                } }} d-inline-flex align-items-center">
+                                    <i class="fas {{ match($order->status ?? '') {
+                                        'chờ xử lý' => 'fa-clock',
+                                        'đang xử lý' => 'fa-spinner fa-spin',
+                                        'hoàn thành' => 'fa-check-circle',
+                                        'đã hủy' => 'fa-times-circle',
+                                        default => 'fa-question-circle'
+                                    } }} me-2"></i>
+                                    {{ ucfirst($order->status ?? 'Không xác định') }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="status-badge {{ $order->payment_status === 'đã thanh toán' ? 'success' : ($order->payment_status === 'đã hoàn tiền' ? 'info' : 'warning') }} d-inline-flex align-items-center">
+                                    <i class="fas {{ $order->payment_status === 'đã thanh toán' ? 'fa-check-circle' : ($order->payment_status === 'đã hoàn tiền' ? 'fa-undo' : 'fa-clock') }} me-2"></i>
+                                    {{ ucfirst($order->payment_status) }}
                                 </span>
                             </td>
                             <td>{{ optional($order->created_at)->format('d/m/Y H:i') ?? 'N/A' }}</td>
@@ -110,7 +130,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="6" class="text-center py-5">
+                            <td colspan="8" class="text-center py-5">
                                 <div class="empty-state">
                                     <i class="fas fa-inbox fa-3x mb-3"></i>
                                     <p class="text-muted">Không có đơn hàng nào</p>
@@ -343,5 +363,54 @@
         -webkit-text-fill-color: transparent;
     }
 
+    .btn-link {
+        color: var(--primary);
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+
+    .btn-link:hover {
+        color: var(--primary-dark);
+        transform: translateX(5px);
+    }
+
+    .btn-icon {
+        color: var(--text-secondary);
+        font-size: 1.1rem;
+        margin: 0 0.3rem;
+        transition: all 0.3s ease;
+    }
+
+    .btn-icon:hover {
+        color: var(--primary);
+        transform: scale(1.1);
+    }
+
+    .order-id {
+        font-weight: 600;
+        color: var(--primary);
+    }
+
+    .price-tag {
+        font-weight: 600;
+        color: var(--success);
+    }
+
+    .action-buttons {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .empty-state {
+        color: var(--text-secondary);
+        padding: 2rem;
+    }
+
+    .empty-state i {
+        color: var(--text-secondary);
+        opacity: 0.5;
+    }
     /* Các kiểu dáng khác không thay đổi */
 </style>

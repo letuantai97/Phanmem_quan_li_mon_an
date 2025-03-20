@@ -1,33 +1,35 @@
 <?php
-
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 class UserSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
-    public function run(): void
+    public function run()
     {
-        // Create admin account
-        User::create([
-            'name' => 'Admin',
-            'email' => 'admin@gmail.com',
-            'password' => Hash::make('admin'),
-            'role' => 'admin',
-        ]);
+        // Xóa dữ liệu cũ (nếu cần)
+        DB::table('users')->truncate();
 
-        // Create staff account
-        User::create([
-            'name' => 'Staff',
-            'email' => 'staff@example.com',
-            'password' => Hash::make('12345678'),
-            'role' => 'nhanvien',
+        // Chèn dữ liệu mẫu
+        DB::table('users')->insert([
+            [
+                'name' => 'Admin',
+                'email' => 'admin@example.com',
+                'password' => Hash::make('admin'), // Mã hóa mật khẩu
+                'role' => 'admin',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'Staff',
+                'email' => 'staff@example.com',
+                'password' => Hash::make('12345678'),
+                'role' => 'staff',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]
         ]);
     }
 }

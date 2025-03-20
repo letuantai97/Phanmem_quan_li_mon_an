@@ -6,11 +6,19 @@
         <div class="card-body">
             <form action="{{ route('reports.index') }}" method="GET" class="row g-3 align-items-center">
                 <div class="col-auto">
-                    <select name="date_range" class="form-select" onchange="this.form.submit()">
+                    <select name="date_range" class="form-select" id="dateRangeSelect">
                         <option value="today" {{ request('date_range') == 'today' ? 'selected' : '' }}>Hôm nay</option>
                         <option value="week" {{ request('date_range') == 'week' ? 'selected' : '' }}>Tuần này</option>
                         <option value="month" {{ request('date_range') == 'month' ? 'selected' : '' }}>Tháng này</option>
+                        <option value="specific_month" {{ request('date_range') == 'specific_month' ? 'selected' : '' }}>Chọn tháng</option>
                         <option value="custom" {{ request('date_range') == 'custom' ? 'selected' : '' }}>Tùy chọn</option>
+                    </select>
+                </div>
+                <div class="col-auto specific-month {{ request('date_range') == 'specific_month' ? '' : 'd-none' }}">
+                    <select name="selected_month" class="form-select">
+                        @for ($i = 1; $i <= 12; $i++)
+                            <option value="{{ $i }}" {{ request('selected_month') == $i ? 'selected' : '' }}>Tháng {{ $i }}</option>
+                        @endfor
                     </select>
                 </div>
                 <div class="col-auto custom-date {{ request('date_range') == 'custom' ? '' : 'd-none' }}">
@@ -19,10 +27,12 @@
                 <div class="col-auto custom-date {{ request('date_range') == 'custom' ? '' : 'd-none' }}">
                     <input type="date" name="end_date" class="form-control" value="{{ request('end_date') }}">
                 </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary">Xem báo cáo</button>
+                </div>
             </form>
         </div>
     </div>
-
     <!-- Tổng quan -->
     <div class="row g-4 mb-4">
         <div class="col-md-4">
@@ -54,7 +64,7 @@
     <!-- Biểu đồ doanh thu -->
     <div class="row g-4 mb-4">
         <!-- Biểu đồ cột theo thời gian -->
-        <div class="col-md-6">
+        <div class="col-md-4">
             <div class="card h-100">
                 <div class="card-body">
                     <h5 class="card-title">Biểu Đồ Doanh Thu Theo Thời Gian</h5>
@@ -63,11 +73,20 @@
             </div>
         </div>
         <!-- Biểu đồ doanh thu tổng quan -->
-        <div class="col-md-6">
+        <div class="col-md-4">
             <div class="card h-100">
                 <div class="card-body">
                     <h5 class="card-title">Tổng Quan Doanh Thu</h5>
                     <canvas id="overviewRevenueChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <!-- Biểu đồ món ăn bán chạy -->
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Top Món Ăn Bán Chạy</h5>
+                    <canvas id="topFoodsChart"></canvas>
                 </div>
             </div>
         </div>
@@ -150,10 +169,20 @@
     // Khởi tạo biểu đồ doanh thu theo thời gian
     const revenueData = @json($revenueStats);
     const timeCtx = document.getElementById('timeRevenueChart').getContext('2d');
+    const dateRangeSelect = document.querySelector('#dateRangeSelect');
+    const selectedMonth = document.querySelector('select[name="selected_month"]');
+
+    const chartTitle = dateRangeSelect.value === 'specific_month' ?
+        'Doanh Thu Tháng ' + selectedMonth.options[selectedMonth.selectedIndex].text :
+        'Doanh Thu Theo Thời Gian';
+
     new Chart(timeCtx, {
         type: 'bar',
         data: {
-            labels: revenueData.map(item => item.date),
+            labels: revenueData.map(item => {
+                const date = new Date(item.date);
+                return date.getDate() + '/' + (date.getMonth() + 1);
+            }),
             datasets: [{
                 label: 'Doanh thu',
                 data: revenueData.map(item => item.total_revenue),
@@ -165,7 +194,10 @@
             responsive: true,
             plugins: {
                 legend: { position: 'top' },
-                title: { display: true, text: 'Doanh Thu Theo Thời Gian' },
+                title: {
+                    display: true,
+                    text: chartTitle
+                },
                 tooltip: {
                     callbacks: {
                         label: function(context) {
@@ -198,49 +230,34 @@
     const overviewCtx = document.getElementById('overviewRevenueChart').getContext('2d');
     // Xử lý dữ liệu theo khung giờ
     const timeRanges = ['6-9h', '9-12h', '12-15h', '15-18h', '18-21h', '21-24h'];
-    @php
-        $ordersByTime = array_fill(0, 6, 0);
-        $itemsByTime = array_fill(0, 6, 0);
-        $revenueByTime = array_fill(0, 6, 0);
+    const ordersByTime = @json($overview['hourly_stats']['orders']->groupBy('hour')->map(function($group) {
+        return $group->sum('count');
+    })->toArray());
+    const itemsByTime = @json($overview['hourly_stats']['items']->groupBy('hour')->map(function($group) {
+        return $group->sum('total_items');
+    })->toArray());
+    const revenueByTime = @json($overview['hourly_stats']['revenue']->groupBy('hour')->map(function($group) {
+        return $group->sum('total_revenue');
+    })->toArray());
 
-        if(isset($overview['hourly_stats'])) {
-            foreach($overview['hourly_stats']['orders'] ?? [] as $stat) {
-                if($stat->hour >= 6 && $stat->hour < 24) {
-                    $timeIndex = floor(($stat->hour - 6) / 3);
-                    if ($timeIndex >= 0 && $timeIndex < 6) {
-                        $ordersByTime[$timeIndex] += $stat->count;
-                    }
-                }
+    // Chuyển đổi dữ liệu theo khung giờ
+    const processTimeData = (data) => {
+        const result = Array(6).fill(0);
+        Object.entries(data).forEach(([hour, value]) => {
+            const timeIndex = Math.floor((parseInt(hour) - 6) / 3);
+            if (timeIndex >= 0 && timeIndex < 6) {
+                result[timeIndex] += value;
             }
+        });
+        return result;
+    };
 
-            foreach($overview['hourly_stats']['items'] ?? [] as $stat) {
-                if($stat->hour >= 6 && $stat->hour < 24) {
-                    $timeIndex = floor(($stat->hour - 6) / 3);
-                    if ($timeIndex >= 0 && $timeIndex < 6) {
-                        $itemsByTime[$timeIndex] += $stat->total_items;
-                    }
-                }
-            }
-
-            foreach($overview['hourly_stats']['revenue'] ?? [] as $stat) {
-                if($stat->hour >= 6 && $stat->hour < 24) {
-                    $timeIndex = floor(($stat->hour - 6) / 3);
-                    if ($timeIndex >= 0 && $timeIndex < 6) {
-                        $revenueByTime[$timeIndex] += $stat->total_revenue;
-                    }
-                }
-            }
-        }
-    @endphp
-    const ordersByTime = @json($ordersByTime);
-    const itemsByTime = @json($itemsByTime);
-    const revenueByTime = @json($revenueByTime);
     const periodData = {
         labels: timeRanges,
         datasets: [
             {
                 label: 'Số đơn hàng',
-                data: ordersByTime,
+                data: processTimeData(ordersByTime),
                 backgroundColor: '#ef4444',
                 borderRadius: 5,
                 yAxisID: 'orders',
@@ -248,7 +265,7 @@
             },
             {
                 label: 'Số món ăn',
-                data: itemsByTime,
+                data: processTimeData(itemsByTime),
                 backgroundColor: '#f59e0b',
                 borderRadius: 5,
                 yAxisID: 'orders',
@@ -256,7 +273,7 @@
             },
             {
                 label: 'Doanh thu',
-                data: revenueByTime,
+                data: processTimeData(revenueByTime),
                 backgroundColor: '#10b981',
                 borderRadius: 5,
                 yAxisID: 'revenue',
@@ -324,12 +341,80 @@
     });
 
     // Xử lý hiển thị form tùy chọn ngày
-    document.querySelector('select[name="date_range"]').addEventListener('change', function() {
+    document.querySelector('#dateRangeSelect').addEventListener('change', function() {
         const customDateInputs = document.querySelectorAll('.custom-date');
+        const specificMonthInput = document.querySelector('.specific-month');
+
+        customDateInputs.forEach(input => input.classList.add('d-none'));
+        specificMonthInput.classList.add('d-none');
+
         if (this.value === 'custom') {
             customDateInputs.forEach(input => input.classList.remove('d-none'));
-        } else {
-            customDateInputs.forEach(input => input.classList.add('d-none'));
+        } else if (this.value === 'specific_month') {
+            specificMonthInput.classList.remove('d-none');
+        }
+
+        if (this.value !== 'custom') {
+            this.closest('form').submit();
+        }
+    });
+
+    // Add event listener for month selection
+    document.querySelector('select[name="selected_month"]').addEventListener('change', function() {
+        this.closest('form').submit();
+    });
+
+    // Khởi tạo biểu đồ món ăn bán chạy
+    const topFoodsCtx = document.getElementById('topFoodsChart').getContext('2d');
+    const topFoodsData = @json($topFoods);
+    const dateRangeText = (() => {
+        switch (dateRangeSelect.value) {
+            case 'today':
+                return 'Hôm nay';
+            case 'week':
+                return 'Tuần này';
+            case 'month':
+                return 'Tháng này';
+            case 'specific_month':
+                return selectedMonth.options[selectedMonth.selectedIndex].text;
+            case 'custom':
+                const startDate = document.querySelector('input[name="start_date"]').value;
+                const endDate = document.querySelector('input[name="end_date"]').value;
+                return `${startDate} - ${endDate}`;
+            default:
+                return 'Tất cả thời gian';
+        }
+    })();
+
+    new Chart(topFoodsCtx, {
+        type: 'bar',
+        data: {
+            labels: topFoodsData.slice(0, 5).map(item => item.name),
+            datasets: [{
+                label: 'Số lượng bán ra',
+                data: topFoodsData.slice(0, 5).map(item => item.total_quantity),
+                backgroundColor: '#60a5fa',
+                borderRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'top' },
+                title: {
+                    display: true,
+                    text: `Top 5 Món Ăn Bán Chạy (${dateRangeText})`
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1,
+                        precision: 0
+                    }
+                }
+            }
         }
     });
 </script>

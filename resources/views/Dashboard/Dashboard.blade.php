@@ -8,7 +8,6 @@
             <p class="text-muted fs-5 mb-0">{{ now()->format('l, d/m/Y') }}</p>
         </div>
     </div>
-
     <!-- Stats Cards Row -->
     <div class="row g-4 mb-4">
         <!-- Tổng Số Món Ăn -->

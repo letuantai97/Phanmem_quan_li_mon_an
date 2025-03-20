@@ -14,20 +14,10 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->timestamps();
         });
-        Schema::create('foods', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->text('description')->nullable();
-            $table->decimal('price', 10, 2);
-            $table->string('image')->nullable();
-            $table->foreignId('category_id')
-                  ->constrained()
-                  ->onDelete('cascade');
-            $table->timestamps();
-        });
     }
+
     public function down(): void
     {
-        Schema::dropIfExists('foods');
+        Schema::dropIfExists('categories');
     }
 };

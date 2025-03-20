@@ -30,10 +30,11 @@ class RevenueController extends Controller
                 $end = Carbon::now();
         }
 
-        // Lấy các đơn hàng hoàn thành trong khoảng thời gian
+        // Lấy các đơn hàng hoàn thành và đã thanh toán trong khoảng thời gian
         $orders = Order::where('status', 'hoàn thành')
+            ->where('payment_status', 'completed')
             ->whereBetween('created_at', [$start, $end])
-            ->with(['products', 'user'])
+            ->with(['items.food', 'user'])
             ->get();
 
         // Tính tổng doanh thu

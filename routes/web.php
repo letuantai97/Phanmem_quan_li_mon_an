@@ -35,13 +35,23 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('foods', FoodController::class);
 
     // Orders Management
-    Route::resource('orders', OrderController::class);
-    Route::patch('/orders/{order}/status', [OrderController::class, 'updateStatus'])
-         ->name('orders.update-status');
+Route::resource('orders', OrderController::class);
 
-    // Reports
-    Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
-    Route::get('/revenue/report', [RevenueController::class, 'report']);
+// Cập nhật trạng thái đơn hàng
+Route::patch('/orders/{order}/status', [OrderController::class, 'updateStatus'])
+     ->name('orders.update-status');
+
+// Cập nhật trạng thái thanh toán đơn hàng
+Route::patch('/orders/{order}/payment-status', [OrderController::class, 'updatePaymentStatus'])
+     ->name('orders.update-payment-status');
+
+// Cập nhật thông tin đơn hàng
+Route::put('/orders/{order}', [OrderController::class, 'update'])
+     ->name('orders.update');
+
+// Reports
+Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+Route::get('/revenue/report', [RevenueController::class, 'report']);
 
 });
 // Home Route

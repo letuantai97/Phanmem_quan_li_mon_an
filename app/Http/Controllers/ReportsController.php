@@ -13,7 +13,8 @@ class ReportsController extends Controller
 {
     public function index(Request $request)
     {
-        $dateRange = $request->input('date_range', 'today');
+        $dateRange = $request->input('date_range', 'month');
+        $selectedMonth = $request->input('selected_month', date('n'));
         $startDate = null;
         $endDate = null;
 
@@ -29,6 +30,19 @@ class ReportsController extends Controller
             case 'month':
                 $startDate = Carbon::now()->startOfMonth();
                 $endDate = Carbon::now()->endOfMonth();
+                break;
+            case 'specific_month':
+                $currentDate = Carbon::now();
+                $year = $currentDate->year;
+                $month = (int)$selectedMonth;
+                
+                // If selected month is in the future, use previous year
+                if ($month > $currentDate->month) {
+                    $year = $currentDate->subYear()->year;
+                }
+                
+                $startDate = Carbon::create($year, $month, 1, 0, 0, 0);
+                $endDate = $startDate->copy()->endOfMonth();
                 break;
             case 'custom':
                 $startDate = $request->input('start_date') ? Carbon::parse($request->input('start_date')) : Carbon::today();
@@ -49,67 +63,33 @@ class ReportsController extends Controller
                     ->select(DB::raw('HOUR(created_at) as hour'), DB::raw('COUNT(*) as count'))
                     ->whereBetween('created_at', [$startDate, $endDate])
                     ->groupBy('hour')
-                    ->orderBy('hour')
                     ->get(),
-                'items' => DB::table('orders')
-                    ->join('order_items', 'orders.id', '=', 'order_items.order_id')
+                'items' => DB::table('order_items')
+                    ->join('orders', 'orders.id', '=', 'order_items.order_id')
                     ->select(DB::raw('HOUR(orders.created_at) as hour'), DB::raw('SUM(order_items.quantity) as total_items'))
                     ->whereBetween('orders.created_at', [$startDate, $endDate])
                     ->groupBy('hour')
-                    ->orderBy('hour')
                     ->get(),
                 'revenue' => DB::table('orders')
                     ->select(DB::raw('HOUR(created_at) as hour'), DB::raw('SUM(total_amount) as total_revenue'))
                     ->whereBetween('created_at', [$startDate, $endDate])
                     ->groupBy('hour')
-                    ->orderBy('hour')
-                    ->get()
-            ],
-            'weekly_stats' => [
-                'orders' => DB::table('orders')
-                    ->select(DB::raw('DAYOFWEEK(created_at) as day'), DB::raw('COUNT(*) as count'))
-                    ->whereBetween('created_at', [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()])
-                    ->groupBy('day')
-                    ->orderBy('day')
-                    ->get(),
-                'items' => DB::table('orders')
-                    ->join('order_items', 'orders.id', '=', 'order_items.order_id')
-                    ->select(DB::raw('DAYOFWEEK(orders.created_at) as day'), DB::raw('SUM(order_items.quantity) as total_items'))
-                    ->whereBetween('orders.created_at', [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()])
-                    ->groupBy('day')
-                    ->orderBy('day')
-                    ->get()
-            ],
-            'monthly_stats' => [
-                'orders' => DB::table('orders')
-                    ->select(DB::raw('DAY(created_at) as day'), DB::raw('COUNT(*) as count'))
-                    ->whereBetween('created_at', [Carbon::now()->startOfMonth(), Carbon::now()->endOfMonth()])
-                    ->groupBy('day')
-                    ->orderBy('day')
-                    ->get(),
-                'items' => DB::table('orders')
-                    ->join('order_items', 'orders.id', '=', 'order_items.order_id')
-                    ->select(DB::raw('DAY(orders.created_at) as day'), DB::raw('SUM(order_items.quantity) as total_items'))
-                    ->whereBetween('orders.created_at', [Carbon::now()->startOfMonth(), Carbon::now()->endOfMonth()])
-                    ->groupBy('day')
-                    ->orderBy('day')
                     ->get()
             ]
         ];
 
-        // Dữ liệu thống kê doanh thu
-        $revenueStats = DB::table('orders')
-            ->select(
-                DB::raw('DATE(created_at) as date'),
-                DB::raw('SUM(total_amount) as total_revenue')
-            )
+        // Thống kê doanh thu theo thời gian
+        $revenueStats = Order::select(
+            DB::raw('DATE(created_at) as date'),
+            DB::raw('SUM(total_amount) as total_revenue')
+        )
             ->whereBetween('created_at', [$startDate, $endDate])
             ->groupBy('date')
             ->orderBy('date')
-            ->paginate(5);
+            ->get();
 
-        // Món ăn bán chạy nhất
-        $topFoodsQuery = Food::select(
+        // Top món ăn bán chạy
+        $topFoods = Food::select(
             'foods.id',
             'foods.name',
             DB::raw('SUM(order_items.quantity) as total_quantity'),
@@ -119,12 +99,12 @@ class ReportsController extends Controller
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
             ->whereBetween('orders.created_at', [$startDate, $endDate])
             ->groupBy('foods.id', 'foods.name')
-            ->orderByDesc('total_quantity');
+            ->orderByDesc('total_quantity')
+            ->paginate(5);
 
-        $topFoods = $topFoodsQuery->paginate(5);
-
-        // Thống kê danh mục
-        $categoryStatsQuery = Category::select(
+        // Thống kê theo danh mục
+        $categoryStats = Category::select(
+            'categories.id',
             'categories.name',
             DB::raw('COUNT(DISTINCT orders.id) as total_orders'),
             DB::raw('SUM(order_items.quantity) as total_items'),
@@ -135,10 +115,8 @@ class ReportsController extends Controller
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
             ->whereBetween('orders.created_at', [$startDate, $endDate])
             ->groupBy('categories.id', 'categories.name')
-            ->orderByDesc('total_revenue');
+            ->get();
 
-        $categoryStats = $categoryStatsQuery->paginate(5);
-
-        return view('reports.index', compact('overview', 'revenueStats', 'topFoods', 'categoryStats', 'startDate', 'endDate'));
+        return view('reports.index', compact('overview', 'revenueStats', 'topFoods', 'categoryStats'));
     }
 }

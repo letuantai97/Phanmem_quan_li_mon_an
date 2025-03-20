@@ -11,7 +11,6 @@
             </a>
         </div>
     </div>
-
     <div class="row">
         <div class="col-md-8">
             <div class="card mb-4">
@@ -33,6 +32,22 @@
                         </div>
                         <div class="col-md-6">
                             <strong>Trạng thái:</strong> {!! $order->status_badge !!}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Thanh toán:</strong>
+                            <span class="status-badge {{ $order->payment_status === 'đã thanh toán' ? 'success' : ($order->payment_status === 'đã hoàn tiền' ? 'info' : 'warning') }} d-inline-flex align-items-center">
+                                <i class="fas {{ $order->payment_status === 'đã thanh toán' ? 'fa-check-circle' : ($order->payment_status === 'đã hoàn tiền' ? 'fa-undo' : 'fa-clock') }} me-2"></i>
+                                {{ ucfirst($order->payment_status) }}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <strong>Loại đơn hàng:</strong>
+                            <span class="status-badge {{ $order->order_type === 'dine-in' ? 'success' : 'info' }} d-inline-flex align-items-center">
+                                <i class="fas {{ $order->order_type === 'dine-in' ? 'fa-utensils' : 'fa-shopping-cart' }} me-2"></i>
+                                {{ $order->order_type === 'dine-in' ? 'Tại chỗ' : 'Online' }}
+                            </span>
                         </div>
                     </div>
                     <div class="mb-3">

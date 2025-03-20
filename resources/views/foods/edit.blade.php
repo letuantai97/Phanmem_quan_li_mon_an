@@ -1,5 +1,4 @@
 @extends('layouts.app')
-
 @section('content')
 <div class="container">
     <div class="row">
@@ -84,7 +83,6 @@
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
-
                         @if($food->image)
                             <div class="form-group mb-3">
                                 <label>Hình Ảnh Hiện Tại</label>

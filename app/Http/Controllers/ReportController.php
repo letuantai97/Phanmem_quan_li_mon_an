@@ -24,6 +24,11 @@ class ReportController extends Controller
             case 'week':
                 $query->whereBetween('created_at', [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()]);
                 break;
+            case 'specific_month':
+                $selectedMonth = $request->selected_month ?? Carbon::now()->month;
+                $query->whereMonth('created_at', $selectedMonth)
+                      ->whereYear('created_at', Carbon::now()->year);
+                break;
             case 'custom':
                 $start = $request->start_date ? Carbon::parse($request->start_date) : Carbon::now()->startOfMonth();
                 $end = $request->end_date ? Carbon::parse($request->end_date)->endOfDay() : Carbon::now()->endOfDay();
@@ -34,26 +39,41 @@ class ReportController extends Controller
                       ->whereYear('created_at', Carbon::now()->year);
         }
 
+        // Cập nhật thống kê theo giờ dựa trên khoảng thời gian
+        $hourlyQuery = DB::table('orders');
+        if ($dateRange === 'today') {
+            $hourlyQuery->whereDate('created_at', Carbon::today());
+        } elseif ($dateRange === 'specific_month') {
+            $selectedMonth = $request->selected_month ?? Carbon::now()->month;
+            $hourlyQuery->whereMonth('created_at', $selectedMonth)
+                        ->whereYear('created_at', Carbon::now()->year);
+        }
+
         // Tổng quan
         $overview = [
             'total_orders' => $query->count(),
             'total_revenue' => $query->sum('total_amount'),
             'average_order_value' => $query->avg('total_amount') ?? 0,
             'hourly_stats' => [
-                'orders' => DB::table('orders')
+                'orders' => $hourlyQuery->clone()
                     ->selectRaw('HOUR(created_at) as hour, COUNT(*) as count')
-                    ->whereRaw('DATE(created_at) = CURDATE()')
                     ->groupBy('hour')
                     ->get(),
                 'items' => DB::table('orders')
                     ->join('order_items', 'orders.id', '=', 'order_items.order_id')
                     ->selectRaw('HOUR(orders.created_at) as hour, SUM(order_items.quantity) as total_items')
-                    ->whereRaw('DATE(orders.created_at) = CURDATE()')
+                    ->when($dateRange === 'today', function($query) {
+                        return $query->whereDate('orders.created_at', Carbon::today());
+                    })
+                    ->when($dateRange === 'specific_month', function($query) use ($request) {
+                        $selectedMonth = $request->selected_month ?? Carbon::now()->month;
+                        return $query->whereMonth('orders.created_at', $selectedMonth)
+                                     ->whereYear('orders.created_at', Carbon::now()->year);
+                    })
                     ->groupBy('hour')
                     ->get(),
-                'revenue' => DB::table('orders')
+                'revenue' => $hourlyQuery->clone()
                     ->selectRaw('HOUR(created_at) as hour, SUM(total_amount) as total_revenue')
-                    ->whereRaw('DATE(created_at) = CURDATE()')
                     ->groupBy('hour')
                     ->get()
             ]
@@ -78,6 +98,7 @@ class ReportController extends Controller
             ->orderByDesc('total_quantity')
             ->take(5)
             ->get();
+
         // Thống kê theo danh mục
         $categoryStats = Category::select('categories.*')
             ->join('foods', 'categories.id', '=', 'foods.category_id')
@@ -88,6 +109,7 @@ class ReportController extends Controller
             ->selectRaw('SUM(order_items.quantity * order_items.price) as total_revenue')
             ->groupBy('categories.id')
             ->get();
+
         return view('reports.index', compact(
             'overview',
             'revenueStats',

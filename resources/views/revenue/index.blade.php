@@ -71,6 +71,36 @@
                                     <td class="text-center">{{ $product->pivot->quantity }}</td>
                                     <td class="text-end">{{ number_format($product->price, 0, ',', '.') }} ₫</td>
                                     <td class="text-end">{{ number_format($product->pivot->quantity * $product->price, 0, ',', '.') }} ₫</td>
+                                    <td>
+                                        <span class="status-badge {{ $order->order_type === 'dine-in' ? 'success' : 'info' }} d-inline-flex align-items-center">
+                                            <i class="fas {{ $order->order_type === 'dine-in' ? 'fa-utensils' : 'fa-shopping-cart' }} me-2"></i>
+                                            {{ $order->order_type === 'dine-in' ? 'Tại chỗ' : 'Online' }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="status-badge {{ match($order->status) {
+                                            'hoàn thành' => 'success',
+                                            'đang xử lý' => 'info',
+                                            'chờ xử lý' => 'warning',
+                                            'đã hủy' => 'danger',
+                                            default => 'secondary'
+                                        } }} d-inline-flex align-items-center">
+                                            <i class="fas {{ match($order->status) {
+                                                'hoàn thành' => 'fa-check-circle',
+                                                'đang xử lý' => 'fa-spinner fa-spin',
+                                                'chờ xử lý' => 'fa-clock',
+                                                'đã hủy' => 'fa-times-circle',
+                                                default => 'fa-question-circle'
+                                            } }} me-2"></i>
+                                            {{ ucfirst($order->status) }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="status-badge {{ $order->payment_status === 'đã thanh toán' ? 'success' : ($order->payment_status === 'đã hoàn tiền' ? 'info' : 'warning') }} d-inline-flex align-items-center">
+                                            <i class="fas {{ $order->payment_status === 'đã thanh toán' ? 'fa-check-circle' : ($order->payment_status === 'đã hoàn tiền' ? 'fa-undo' : 'fa-clock') }} me-2"></i>
+                                            {{ ucfirst($order->payment_status) }}
+                                        </span>
+                                    </td>
                                 </tr>
                             @endforeach
                         @empty

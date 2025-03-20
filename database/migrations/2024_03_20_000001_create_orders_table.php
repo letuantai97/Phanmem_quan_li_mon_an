@@ -14,13 +14,12 @@ return new class extends Migration
             $table->string('customer_phone');
             $table->string('customer_email')->nullable();
             $table->text('address');
-            $table->text('ghichu');
+
             $table->text('note')->nullable();
             $table->decimal('total_amount', 10, 2)->default(0);
             $table->enum('status', ['chờ xử lý', 'đang xử lý', 'hoàn thành', 'đã hủy'])->default('chờ xử lý');
             $table->timestamps();
         });
-
         Schema::create('order_items', function (Blueprint $table) {
             $table->id();
             $table->foreignId('order_id')->constrained()->onDelete('cascade');
